@@ -1,0 +1,13 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: spark-hs-config
+data:
+  spark-defaults.conf: |-
+    spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+    spark.history.fs.eventLog.rolling.maxFilesToRetain=5
+    spark.hadoop.fs.s3a.endpoint=http://minio-svc:9000
+    spark.hadoop.fs.s3a.access.key=root
+    spark.hadoop.fs.s3a.secret.key=kubedata123
+    spark.hadoop.fs.s3a.path.style.access=true

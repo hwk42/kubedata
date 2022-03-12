@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trino-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trino
+      release: trino
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: trino
+        release: trino
+        component: worker
+    spec:
+      serviceAccountName: default
+      volumes:
+        - name: config-volume
+          configMap:
+            name: trino-worker
+        - name: catalog-volume
+          configMap:
+            name: trino-catalog
+      imagePullSecrets:
+        - name: registry-credentials
+      containers:
+        - name: trino-worker
+          image: "trinodb/trino:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: minio
+                key: accessKey
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: minio
+                key: secretKey
+          volumeMounts:
+            - mountPath: /etc/trino
+              name: config-volume
+            - mountPath: /etc/trino/catalog
+              name: catalog-volume
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /v1/info
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /v1/info
+              port: http
+          resources:
+            {}

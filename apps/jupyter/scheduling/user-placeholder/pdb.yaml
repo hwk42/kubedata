@@ -1,0 +1,12 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-placeholder
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      component: user-placeholder
+      app: jupyterhub
+      release: jupyterhub

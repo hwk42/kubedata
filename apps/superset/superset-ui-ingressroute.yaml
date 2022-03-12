@@ -1,0 +1,48 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: superset-ui
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/superset`)
+    kind: Rule
+    priority: 1
+    services:
+    - name: superset
+      port: 8088
+    middlewares:
+      - name: superset-ui
+  - match: PathPrefix(`/superset/welcome/`)
+    kind: Rule
+    priority: 2
+    services:
+    - name: superset
+      port: 8088
+  - match: PathPrefix(`/chart/`) || PathPrefix(`/dashboard/`) || PathPrefix(`/savedqueryview/`) || PathPrefix(`/csstemplateasyncmodelview/`)  || PathPrefix(`/users/`)
+    kind: Rule
+    services:
+    - name: superset
+      port: 8088
+  - match: PathPrefix(`/api/v1/query`) || PathPrefix(`/api/v1/saved_query`) || PathPrefix(`/api/v1/dashboard`) || PathPrefix(`/api/v1/chart`) || PathPrefix(`/api/v1/database`) || PathPrefix(`/api/v1/dataset`) 
+    kind: Rule
+    services:
+    - name: superset
+      port: 8088
+  - match: PathPrefix(`/static/appbuilder`) || PathPrefix(`/static/assets`) 
+    kind: Rule
+    priority: 2
+    services:
+    - name: superset
+      port: 8088
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: superset-ui
+spec:
+  stripPrefix:
+    prefixes:
+      - /superset

@@ -1,0 +1,39 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alluxio-ui
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/alluxio`)
+    kind: Rule
+    services:
+    - name: alluxio-master-0
+      port: 19999
+    middlewares:
+      - name: alluxio-ui
+  - match: PathPrefix(`/api/v1/common/`) || PathPrefix(`/api/v1/master/`)
+    kind: Rule
+    services:
+    - name: alluxio-master-0
+      port: 19999
+  - match: PathPrefix(`/static/css/`) || PathPrefix(`/static/js/`) || PathPrefix(`/static/media/`)
+    kind: Rule
+    priority: 2
+    services:
+    - name: alluxio-master-0
+      port: 19999
+
+
+
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: alluxio-ui
+spec:
+  stripPrefix:
+    prefixes:
+      - /alluxio

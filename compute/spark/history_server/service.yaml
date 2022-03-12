@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-hs
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 18080
+    protocol: TCP
+    name: spark-history-server
+  selector:
+      app.kubernetes.io/name: spark-history-server
+      app.kubernetes.io/instance: hs

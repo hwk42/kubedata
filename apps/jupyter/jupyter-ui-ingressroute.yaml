@@ -1,0 +1,26 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: jupyter
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/hub`) || PathPrefix(`/jupyter`) || PathPrefix(`/notebook`) || PathPrefix(`/user/`)
+    kind: Rule
+    services:
+    - name: proxy-public
+      port: 80
+    middlewares:
+      - name: jupyter
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: jupyter
+spec:
+  stripPrefix:
+    prefixes:
+      - /jupyter
+      - /notebook

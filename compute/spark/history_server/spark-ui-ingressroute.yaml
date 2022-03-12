@@ -1,0 +1,48 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: spark-hs
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/spark`) || PathPrefix(`/history`)
+    kind: Rule
+    services:
+    - name: spark-hs
+      port: 80
+    middlewares:
+      - name: spark-hs
+  - match: PathPrefix(`/static`) || PathPrefix(`/images`) || PathPrefix(`/history`)
+    kind: Rule
+    priority: 1
+    services:
+    - name: spark-hs
+      port: 80
+  - match: PathPrefix(`/api/v1/applications`)
+    kind: Rule
+    priority: 2
+    services:
+    - name: spark-hs
+      port: 80
+  - match: Query(`showIncomplete=true`)
+    kind: Rule
+    services:
+    - name: spark-hs
+      port: 80
+  - match: Query(`showIncomplete=false`)
+    kind: Rule
+    services:
+    - name: spark-hs
+      port: 80
+
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: spark-hs
+spec:
+  stripPrefix:
+    prefixes:
+      - /spark

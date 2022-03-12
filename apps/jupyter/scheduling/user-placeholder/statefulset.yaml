@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: user-placeholder
+spec:
+  podManagementPolicy: Parallel
+  replicas: 0
+  selector:
+    matchLabels:
+      component: user-placeholder
+      app: jupyterhub
+      release: jupyterhub
+  serviceName: user-placeholder
+  template:
+    metadata:
+      labels:
+        component: user-placeholder
+        app: jupyterhub
+        release: jupyterhub
+    spec:
+      schedulerName: jupyterhub-user-scheduler
+      nodeSelector: {}
+      tolerations:
+        - effect: NoSchedule
+          key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: user
+        - effect: NoSchedule
+          key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: user
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: hub.jupyter.org/node-purpose
+                    operator: In
+                    values: [user]
+      terminationGracePeriodSeconds: 0
+      automountServiceAccountToken: false
+      containers:
+        - name: pause
+          image: k8s.gcr.io/pause:3.5
+          resources:
+            requests:
+              memory: 1G
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsUser: 65534

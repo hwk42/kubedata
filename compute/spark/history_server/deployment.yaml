@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-hs
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spark-history-server
+      app.kubernetes.io/instance: hs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spark-history-server
+        app.kubernetes.io/instance: hs
+    spec:
+      serviceAccountName: default
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - i=0; until [ $((i)) -gt 0 ]; do echo 'waiting for bucket'; sleep 3;mc config host add kubedata http://minio-svc:9000 root kubedata123;i=`mc ls kubedata/kubedata |wc -l`;done
+        image: minio/mc
+        imagePullPolicy: IfNotPresent
+        name: wait-for-bucket
+      containers:
+      - name: spark-history-server
+        image: "ghcr.io/hwk42/spark:3.0.3-py38"
+        command:
+          - '/opt/spark/sbin/start-history-server.sh'
+        env:
+          - name: SPARK_NO_DAEMONIZE
+            value: "false"
+          - name: SPARK_HISTORY_OPTS
+            value: "-Dspark.history.fs.logDirectory=s3a://kubedata/spark"
+          - name: AWS_ROLE_SESSION_NAME
+            value: "spark-hs"
+          - name: SPARK_CONF_DIR
+            value: /opt/spark/conf
+        volumeMounts:
+          - name: config-volume
+            mountPath: /opt/spark/conf/spark-defaults.conf
+            subPath: spark-defaults.conf
+        ports:
+          - name: http
+            containerPort: 18080
+            protocol: TCP
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        resources:
+            {}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: spark-hs-config

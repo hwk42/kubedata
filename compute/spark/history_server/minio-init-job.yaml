@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+spec:
+  template:
+    spec:
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - until nc -zv minio-svc 9000 -w1; do echo 'waiting for minio'; sleep 3; done
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        name: wait-for-minio
+      containers:
+      - name: create-bucket
+        image: minio/mc
+        command: 
+        - /bin/sh
+        - -c
+        - mc config host add kubedata http://minio-svc:9000 root kubedata123 && mc mb kubedata/kubedata/spark
+      restartPolicy: Never

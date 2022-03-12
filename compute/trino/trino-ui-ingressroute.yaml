@@ -1,0 +1,26 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: trino-ui
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/trino`) || PathPrefix(`/presto`) ||  PathPrefix(`/ui`)
+    kind: Rule
+    services:
+    - name: trino
+      port: 8080
+    middlewares:
+      - name: trino-ui
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: trino-ui
+spec:
+  stripPrefix:
+    prefixes:
+      - /trino
+      - /presto

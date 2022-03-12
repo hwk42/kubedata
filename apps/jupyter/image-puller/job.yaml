@@ -1,0 +1,48 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hook-image-awaiter
+spec:
+  template:
+    # The hook-image-awaiter Job and hook-image-puller DaemonSet was
+    # conditionally created based on this state:
+    #
+    # prePuller.hook.enabled=true
+    # prePuller.hook.pullOnlyOnChanges=true
+    # post-upgrade checksum != pre-upgrade checksum (of the hook-image-puller DaemonSet)
+    # "92a0003d753fa036527da0cdd3f36375e1f7168bccc146b1dc44bc4d415da0b4" != ""
+    #
+    metadata:
+      labels:
+        component: image-puller
+        app: jupyterhub
+        release: jupyterhub
+    spec:
+      restartPolicy: Never
+      serviceAccountName: hook-image-awaiter
+      nodeSelector: {}
+      tolerations:
+        - effect: NoSchedule
+          key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: core
+        - effect: NoSchedule
+          key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: core
+      containers:
+        - image: jupyterhub/k8s-image-awaiter:1.2.0
+          name: hook-image-awaiter
+          command:
+            - /image-awaiter
+            - -ca-path=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -auth-token-path=/var/run/secrets/kubernetes.io/serviceaccount/token
+            - -api-server-address=https://kubernetes.default.svc:$(KUBERNETES_SERVICE_PORT)
+            - -namespace=default
+            - -daemonset=hook-image-puller
+            - -pod-scheduling-wait-duration=10
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsUser: 65534

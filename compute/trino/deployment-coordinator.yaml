@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trino-coordinator
+spec:
+  selector:
+    matchLabels:
+      app: trino
+      release: trino
+      component: coordinator
+  template:
+    metadata:
+      labels:
+        app: trino
+        release: trino
+        component: coordinator
+    spec:
+      serviceAccountName: default
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      volumes:
+        - name: config-volume
+          configMap:
+            name: trino-coordinator
+        - name: catalog-volume
+          configMap:
+            name: trino-catalog
+      imagePullSecrets:
+        - name: registry-credentials
+      containers:
+        - name: trino-coordinator
+          image: "trinodb/trino:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: minio
+                key: accessKey
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: minio
+                key: secretKey
+          volumeMounts:
+            - mountPath: /etc/trino
+              name: config-volume
+            - mountPath: /etc/trino/catalog
+              name: catalog-volume
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /v1/info
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /v1/info
+              port: http
+          resources:
+            {}

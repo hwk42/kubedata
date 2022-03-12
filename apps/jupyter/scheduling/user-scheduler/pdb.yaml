@@ -1,0 +1,12 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-scheduler
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      component: user-scheduler
+      app: jupyterhub
+      release: jupyterhub

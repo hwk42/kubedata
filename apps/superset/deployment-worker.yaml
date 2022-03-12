@@ -1,0 +1,76 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-worker
+      release: superset
+  template:
+    metadata:
+      annotations:
+        checksum/superset_config.py: 96546d02f859e15cdf714edd36102ae56d50415109ce5c7b9e7194414d829252
+        checksum/connections: a91716d6d1088e870fbe02159dc0b066dd011885aa08a22fbe60ea1cd4720f82
+        checksum/extraConfigs: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/extraSecrets: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/extraSecretEnv: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/configOverrides: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/configOverridesFiles: 74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b
+        
+      labels:
+        app: superset-worker
+        release: superset
+    spec:
+      securityContext:
+        runAsUser: 0
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - until nc -zv $DB_HOST $DB_PORT -w1; do echo 'waiting for db'; sleep 1; done
+        envFrom:
+        - secretRef:
+            name: 'superset-env'
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        name: wait-for-postgres
+      containers:
+        - name: superset
+          image: "apache/superset:latest"
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c",". /app/pythonpath/superset_bootstrap.sh; celery --app=superset.tasks.celery_app:app worker"]
+          env:
+            - name: "SUPERSET_PORT"
+              value: "8088"
+          envFrom:
+            - secretRef:
+                name: "superset-env"
+          volumeMounts:
+            - name: superset-config
+              mountPath: "/app/pythonpath"
+              readOnly: true
+          resources:
+            {}
+      volumes:
+        - name: superset-config
+          secret:
+            secretName: superset-config

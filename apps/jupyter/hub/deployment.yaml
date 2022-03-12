@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: hub
+      app: jupyterhub
+      release: jupyterhub
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        component: hub
+        app: jupyterhub
+        release: jupyterhub
+        hub.jupyter.org/network-access-proxy-api: "true"
+        hub.jupyter.org/network-access-proxy-http: "true"
+        hub.jupyter.org/network-access-singleuser: "true"
+      annotations:
+        checksum/config-map: f746d7e563a064e9158fe6f7f59bdbd463ed24ad7a927d75a1f18c022c3afeaf
+        checksum/secret: 4b998bb8d78ba0a04d83dc46a3334380da44d705ed42e9f6fad1adfcbaeba863
+    spec:
+      nodeSelector: {}
+      tolerations:
+        - effect: NoSchedule
+          key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: core
+        - effect: NoSchedule
+          key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: core
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: hub.jupyter.org/node-purpose
+                    operator: In
+                    values: [core]
+      volumes:
+        - name: config
+          configMap:
+            name: hub
+        - name: secret
+          secret:
+            secretName: hub
+        - name: pvc
+          persistentVolumeClaim:
+            claimName: hub-db-dir
+      serviceAccountName: hub
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: hub
+          image: jupyterhub/k8s-hub:1.2.0
+          args:
+            - jupyterhub
+            - --config
+            - /usr/local/etc/jupyterhub/jupyterhub_config.py
+            - --upgrade-db
+          volumeMounts:
+            - mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.py
+              subPath: jupyterhub_config.py
+              name: config
+            - mountPath: /usr/local/etc/jupyterhub/z2jh.py
+              subPath: z2jh.py
+              name: config
+            - mountPath: /usr/local/etc/jupyterhub/config/
+              name: config
+            - mountPath: /usr/local/etc/jupyterhub/secret/
+              name: secret
+            - mountPath: /srv/jupyterhub
+              name: pvc
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 1000
+            runAsUser: 1000
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIGPROXY_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hub
+                  key: hub.config.ConfigurableHTTPProxy.auth_token
+          ports:
+            - name: http
+              containerPort: 8081
+          livenessProbe:
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+            httpGet:
+              path: /hub/health
+              port: http
+          readinessProbe:
+            initialDelaySeconds: 0
+            periodSeconds: 2
+            timeoutSeconds: 1
+            failureThreshold: 1000
+            httpGet:
+              path: /hub/health
+              port: http
